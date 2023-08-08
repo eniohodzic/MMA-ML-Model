@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
+from .feature_selection import get_corr_features
 from .train_test import X_y_split, train_test_split
 
 
@@ -14,8 +15,11 @@ def train_model(model, df):
     drop_cols = drop_cols.insert(0, df.columns[df.isna().all()].to_list()) # drop columns that contain all nans
 
     post_comp_cols = df.loc[:, ~df.columns.str.contains('precomp_([a-zA-Z_]+)_vs_opp', regex=True)].columns.to_list() # All columns that do not have the precomp_ id or vs_opp id
-
     drop_cols = drop_cols.insert(0, post_comp_cols)
+
+    features = df.drop(columns=drop_cols, axis=1)
+    drop_features_cols = get_corr_features(features, thresh=0.95)
+    drop_cols = drop_cols.insert(0, drop_features_cols)
 
     train_df, test_df = train_test_split(df)
     X_train, y_train, X_test, y_test = X_y_split(train_df.copy(), test_df.copy(), 'result', drop_cols)
@@ -40,4 +44,4 @@ def train_model(model, df):
     print(f'Model Training Accuracy: {train_score}')
     print(f'Model Test Accuracy: {test_score}')
 
-    return model, X_train.columns
+    return model, [X_train, y_train, X_test, y_test]

@@ -5,9 +5,9 @@ import pandas as pd
 
 def train_test_split(df):
 
-    test_df = df.loc[(df['date'] > '2020-01-01')]
+    test_df = df.loc[(df['date'] > '2022-01-01')]
     train_df = df.drop(test_df.index)
-    train_df = train_df.loc[(train_df['date'] > '2012-01-01')]
+    train_df = train_df.loc[(train_df['date'] > '2014-01-01')]
 
     return train_df, test_df
 

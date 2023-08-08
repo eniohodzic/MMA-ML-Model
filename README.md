@@ -1,4 +1,4 @@
-MMA
+MMA-ML-Model
 ==============================
 
 Using ML to predict fight outcomes
