@@ -1,25 +1,15 @@
 from os.path import abspath, dirname, join
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
-def train_test_split(df):
+def train_test_splitter(final_df, target_df):
 
-    test_df = df.loc[(df['date'] > '2022-01-01')]
-    train_df = df.drop(test_df.index)
-    train_df = train_df.loc[(train_df['date'] > '2014-01-01')]
+    # test_df = df.loc[(df['date'] > '2022-01-01')]
+    # train_df = df.drop(test_df.index)
+    # train_df = train_df.loc[(train_df['date'] > '2014-01-01')]
+    
+    X_train, X_test, y_train, y_test = train_test_split(final_df, target_df, test_size=0.2)
 
-    return train_df, test_df
-
-def X_y_split(train_df, test_df, target, drop_cols):
-
-    drop_cols = drop_cols.insert(0, target)
-
-    X_train = train_df.drop(columns=drop_cols, axis=1)
-    y_train = train_df[target]
-
-    X_test = test_df.drop(columns=drop_cols, axis=1)
-    y_test = test_df[target]
-
-    return X_train, y_train, X_test, y_test
-
+    return X_train, X_test, y_train, y_test

@@ -18,15 +18,13 @@ class OptunaTuning:
             "objective": trial.suggest_categorical("objective", ["binary:logistic"]),
             "verbosity": trial.suggest_categorical("verbosity", [0]),
             "n_jobs": trial.suggest_categorical("n_jobs", [-1]),
-            "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.1, log=True),
             "min_child_weight": trial.suggest_int("min_child_weight", 0, 20),
-            "max_depth": trial.suggest_int("max_depth", 1, 20),
+            "max_depth": trial.suggest_int("max_depth", 1, 5),
             "max_delta_step": trial.suggest_int("max_delta_step", 0, 10),
             "subsample": trial.suggest_float("subsample", 0.1, 1.0, log=True),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.1, 1.0, log=True),
             "gamma": trial.suggest_float("gamma", .01, 0.4, log=True),
-            "n_estimators": trial.suggest_int("n_estimators", 100, 400),
-            "eta": trial.suggest_float("eta", 0.1, 0.2, log=True),
+            "n_estimators": trial.suggest_int("n_estimators", 100, 1000),
             "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.1, log=True),
         }
         model = xgb.XGBClassifier(**search_space)

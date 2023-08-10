@@ -24,17 +24,13 @@ class Feature_Extractor():
     """
 
 
-    def __init__(self, predict_df=None, update=False) -> None:
-        # Update = False means rerun entire solving
+    def __init__(self, predict_df=None) -> None:
         self.transformed_data = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'transformed_stats.csv')))
-        self.update = update
-        if self.update:
-            self.extracted_data = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'extracted_stats.csv')))
+
+        if predict_df is None:
+            self.extracted_data = deepcopy(self.transformed_data)
         else:
-            if predict_df is None:
-                self.extracted_data = deepcopy(self.transformed_data)
-            else:
-                self.extracted_data = predict_df
+            self.extracted_data = predict_df
 
     def extract(self, shift=1):
         self.feature_conversion()
@@ -51,8 +47,6 @@ class Feature_Extractor():
 
     def feature_conversion(self):
         # Coverting some of these various columns into useable features
-        if self.update and 'age' in self.extracted_data:
-            return None
 
         # Converting DoB into Age using date of fight - dob
         for idx, row in tqdm(self.extracted_data.iterrows()):
@@ -92,9 +86,7 @@ class Feature_Extractor():
                        'distance_strikes',
                        'clinch_strikes',
                        'ground_strikes']
- 
-        if self.update and set([strike + '_absorbed' for strike in strike_type]).issubset(self.extracted_data.columns):
-            return None
+
 
         # Take value from each landed strike from fighter and apply it as absorbed strike to opponent row
         # Take value from each landed and attempted strike from fighter and apply it as defended strike to opponent row
@@ -133,16 +125,11 @@ class Feature_Extractor():
                        'clinch_strikes',
                        'ground_strikes']
         
-        if self.update and set([strike + '_accuracy' for strike in strike_type]).issubset(self.extracted_data.columns):
-            return None
 
         generator = zip((strike + '_landed' for strike in strike_type), (strike + '_attempts' for strike in strike_type))
         for col in tqdm(generator):
             col_landed = col[0]
             col_attempts = col[1]
-
-            if self.update and col_landed[:-7] + '_accuracy' in self.extracted_data:
-                break
 
             for idx, row in self.extracted_data.iterrows():
                 landed = row[col_landed]
@@ -164,13 +151,8 @@ class Feature_Extractor():
         """
 
         cols = self.extracted_data.loc[:, 'height':].columns
-        if self.update and set([col + '_absorbed' for col in cols]).issubset(self.extracted_data.columns):
-            return None
 
         for col in tqdm(cols):
-
-            if self.update and col + '_pM' in self.extracted_data:
-                break
 
             for idx, row in self.extracted_data.iterrows():
                 stat = row[col]
@@ -183,14 +165,19 @@ class Feature_Extractor():
 
                 self.extracted_data.loc[idx, col + '_pM'] = value
 
+    def feature_custom(self):
+        """
+        Calculating custom feature stats that may be useful for the model
+
+        Calculation Ex. ground_strikes_landed / takedowns_landed
+        """
+        pass
+
     def feature_elo(self):
         """
         Calculate simulated ELO rating system
         """
         elo = EloSystem(base_rating=800)
-
-        if self.update and 'elo' in self.extracted_data:
-            return None
 
         # Sort by date occuring so ELO changes in proper time and get unique fight_urls from 
         fights = self.extracted_data.sort_values(by='date', ascending=True)['fight_url'].unique()
@@ -217,7 +204,7 @@ class Feature_Extractor():
 
             # K calculation
             if method == 'KO/TKO' or method == 'SUB':
-                k = 32 * (1.5 - 0.1 * (round - 1))
+                k = 32 * (2.0 - 0.2 * (round - 1))
             else:
                 k = 32
 
@@ -239,14 +226,8 @@ class Feature_Extractor():
 
         # Doing all stats calculated so far after 'height'
         cols = self.extracted_data.loc[:, 'height':].columns
-
-        if self.update and set([col + '_differential' for col in cols]).issubset(self.extracted_data.columns):
-            return None
         
         for col in tqdm(cols):
-
-            if self.update and col + '_differential' in self.extracted_data:
-                break
 
             for idx, row in self.extracted_data.iterrows():
                 opponent = row['opponent'] 
@@ -305,16 +286,16 @@ class Feature_Extractor():
             self.extracted_data['precomp_' + col + '_prior'] = group[col].shift(shift)
 
             # Mean stat from prior fights, t0 fight includes t-1,t-2,...., t-1 fight includes t-2, t-3
-            self.extracted_data['precomp_' + col + '_avg'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=3).mean())
+            self.extracted_data['precomp_' + col + '_avg'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=2).mean())
 
             # Windowed mean from prior 3 fights, will make this adjustable in the future
-            self.extracted_data['precomp_' + col + '_windowavg'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=3).mean())
+            self.extracted_data['precomp_' + col + '_windowavg'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=2).mean())
 
             # Variance stat
-            self.extracted_data['precomp_' + col + '_var'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=3).var())
+            self.extracted_data['precomp_' + col + '_var'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=2).var())
 
             # Windowed variance 
-            self.extracted_data['precomp_' + col + '_windowvar'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=3).var())
+            self.extracted_data['precomp_' + col + '_windowvar'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=2).var())
 
             # Peak stat across prior fights
             self.extracted_data['precomp_' + col + '_peak'] = group[col].apply(lambda x : x.shift(shift).expanding().max())
