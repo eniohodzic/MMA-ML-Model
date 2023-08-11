@@ -1,53 +1,51 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import KFold
 
-from .feature_selection import get_corr_features
-from .train_test import train_test_splitter
+from ..features.load_data import load_data
 
 
-def train_model(model, df):
+def train_model(model):
 
-    df['date'] = pd.to_datetime(df['date']) # make sure logic can handle datetime for time series data 
-    df.drop(df.loc[df['result'] == 'D'].index, inplace=True) # Drop ties first 
-    drop_cols = df.loc[:, :'referee'].columns # columns that will be dropped as features (strings, formats, etc.)
+    X, y = load_data()
 
-    drop_cols = drop_cols.insert(0, df.columns[df.isna().mean() > 0.9].to_list()) # drop columns that contain more than % nans
-
-    post_comp_cols = df.loc[:, ~df.columns.str.contains('precomp_([a-zA-Z_]+)_vs_opp', regex=True)].columns.to_list() # All columns that do not have the precomp_ id or vs_opp id
-    drop_cols = drop_cols.insert(0, post_comp_cols)
-
-    features = df.drop(columns=drop_cols, axis=1)
-    drop_features_cols = get_corr_features(features, thresh=1)
-    drop_cols = drop_cols.insert(0, drop_features_cols)
-
-    final_df = df.drop(columns=drop_cols, axis=1)
-
-    indexes = final_df.loc[final_df.isna().mean(axis=1) < 0.5].index # Keep rows that have less than % nans by index
+    kf = KFold(n_splits=5)
+    kf.get_n_splits(X)
     
-    final_df = final_df.loc[indexes, :]
-    target_df = df.loc[indexes, 'result']
+    train_score_list = []
+    test_score_list = []
 
-    X_train, X_test, y_train, y_test = train_test_splitter(final_df, target_df)
+    for train_index, test_index in kf.split(X):
 
-    y_train[y_train == 'W'] = 1
-    y_train[y_train != 1] = 0
+        X_train, X_test = X.iloc[train_index,:], X.iloc[test_index,:]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-    y_test[y_test == 'W'] = 1
-    y_test[y_test != 1] = 0
 
-    y_train = y_train.to_numpy(dtype=int)
-    y_test = y_test.to_numpy(dtype=int)
+        y_train[y_train == 'W'] = 1
+        y_train[y_train != 1] = 0
 
-    model.fit(X_train, y_train)
+        y_test[y_test == 'W'] = 1
+        y_test[y_test != 1] = 0
 
-    y_pred_train = model.predict(X_train)
-    y_pred_test = model.predict(X_test)
+        y_train = y_train.to_numpy(dtype=int)
+        y_test = y_test.to_numpy(dtype=int)
 
-    train_score = accuracy_score(y_train, y_pred_train)
-    test_score = accuracy_score(y_test, y_pred_test)
+        model.fit(X_train, y_train)
 
-    print(f'Model Training Accuracy: {train_score}')
-    print(f'Model Test Accuracy: {test_score}')
+        y_pred_train = model.predict(X_train)
+        y_pred_test = model.predict(X_test)
 
-    return model, [X_train, y_train, X_test, y_test]
+        train_score = accuracy_score(y_train, y_pred_train)
+        test_score = accuracy_score(y_test, y_pred_test)
+
+        train_score_list.append(train_score)
+        test_score_list.append(test_score)
+
+    train_avg = sum(train_score_list) / len(train_score_list)
+    test_avg = sum(test_score_list) / len(test_score_list)
+
+    print(f'Model Training Accuracy: {train_avg}')
+    print(f'Model Test Accuracy: {test_avg}')
+
+    return model, [X, y]
