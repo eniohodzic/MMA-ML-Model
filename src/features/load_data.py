@@ -2,6 +2,7 @@ from os.path import abspath, dirname, join
 
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 from .feature_selection import get_corr_features
 
@@ -33,9 +34,8 @@ def load_data(as_numpy=False):
     y[y != 1] = 0
 
     if as_numpy:
-        X = X.to_numpy()
-        y = y.to_numpy()
-        y = np.reshape(y, (-1,1))
+        X = X.to_numpy(dtype=np.float32)
+        y = np.reshape(y.to_numpy(dtype=np.float32), (-1,1))
         return X, y
     
     return X, y
