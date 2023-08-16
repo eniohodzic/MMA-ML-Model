@@ -1,3 +1,8 @@
+"""
+Standard MLP model 
+"""
+
+import datetime
 import sys
 from typing import Any
 
@@ -6,13 +11,14 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.utils.tensorboard.writer import SummaryWriter
 
 sys.path.insert(0, 'C:/Users/enioh/Documents/Github/MMA-ML-Model')
 from src.features.load_data import load_data
 
-writer = SummaryWriter('C:/Users/enioh/Documents/Github/MMA-ML-Model/runs')
+writer = SummaryWriter('C:/Users/enioh/Documents/Github/MMA-ML-Model/runs/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
 # Device setting to use GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -51,16 +57,13 @@ class StandardScaler:
         self.mean = X.mean(0, keepdim=True)
         self.std = X.std(0, unbiased=False, keepdim=True)
 
-
-# Hyperparameters
-input_size = 1083
-hidden1_size = 500
-hidden2_size = 100
-hidden3_size = 25
-output_size = 1
-batch_size = 50
-lr = 1e-3
-epochs = 400
+class MinMaxScaler:
+    def __call__(self, X):
+        X = (X - self.min) / (self.max - self.min)
+        return X
+    def fit(self, X):
+        self.max = X.max(0, keepdim=True)[0]
+        self.min = X.min(0, keepdim=True)[0]
 
 # Dataset loading and Fitting Scaler 
 dataset = MMADataset()
@@ -70,6 +73,17 @@ train, val, test = random_split(dataset=dataset,
 
 sc = StandardScaler()
 sc.fit(train[:][0])
+
+# Hyperparameters
+input_size = dataset[:][0].shape[1]
+hidden1_size = 500
+hidden2_size = 100
+hidden3_size = 25
+output_size = 1
+batch_size = 50
+lr = 1e-3
+epochs = 400
+
 
 train_loader = DataLoader(dataset=train, 
                           batch_size=batch_size,
@@ -96,10 +110,10 @@ class MMANet(nn.Module):
     def __init__(self, input_size, hidden1_size, hidden2_size, hidden3_size, output_size):
         super(MMANet, self).__init__()
         self.l1 = nn.Linear(input_size, hidden1_size)
-        self.lrelu = nn.LeakyReLU(0.1)
+        self.lrelu = nn.LeakyReLU(0.3)
         self.l2 = nn.Linear(hidden1_size, hidden2_size)
         self.l3 = nn.Linear(hidden2_size, hidden3_size)
-        self.drop1 = nn.Dropout(p=0.2)
+        self.drop1 = nn.Dropout(p=0.3)
         self.l4 = nn.Linear(hidden3_size, output_size)
 
     def forward(self, x):
@@ -123,6 +137,7 @@ model = MMANet(input_size=input_size,
 # Loss and optimizer
 criterion = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 # Tensorboard
 writer.add_graph(model, iter(train_loader).__next__()[0].to(device))
@@ -175,6 +190,9 @@ for epoch in range(epochs):
         
         writer.add_scalar(f'{phase} Loss', epoch_loss, epoch + 1)
         writer.add_scalar(f'{phase} Acc', epoch_acc, epoch + 1)
+
+        if phase == 'val':
+            scheduler.step(epoch_loss)
 
 # Testing 
 with torch.no_grad():
