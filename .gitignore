@@ -1,6 +1,8 @@
 # Specific Folders
 debugger.py
 runs/
+mlruns/
+ray/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

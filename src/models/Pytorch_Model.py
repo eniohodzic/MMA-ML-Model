@@ -29,7 +29,7 @@ class MMADataset(Dataset):
         super(MMADataset, self).__init__()
         
         # Dataloading
-        self.X, self.y = load_data(as_numpy=True)
+        self.X, self.y = load_data(as_3D=False)
         self.X = np.nan_to_num(self.X)
         self.X, self.y = torch.from_numpy(self.X), torch.from_numpy(self.y)
         
@@ -77,7 +77,7 @@ sc.fit(train[:][0])
 # Hyperparameters
 input_size = dataset[:][0].shape[1]
 hidden1_size = 500
-hidden2_size = 100
+hidden2_size = 200
 hidden3_size = 25
 output_size = 1
 batch_size = 50
@@ -137,7 +137,7 @@ model = MMANet(input_size=input_size,
 # Loss and optimizer
 criterion = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.999, patience=5)
 
 # Tensorboard
 writer.add_graph(model, iter(train_loader).__next__()[0].to(device))
