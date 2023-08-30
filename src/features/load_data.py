@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from .feature_selection import get_corr_features
 
 
-def load_data(as_3D=False):
+def load_data(as_3D=False, include_odds=False):
     path_2d = abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'final/', 'final_2D.npz'))
     path_3d = abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'final/', 'final_3D.npz'))
     
@@ -19,7 +19,7 @@ def load_data(as_3D=False):
         npz = np.load(path_3d)
         return npz['X_train'], npz['y_train'], npz['X_test'], npz['y_test']
 
-    df = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'extracted_stats.csv')))
+    df = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'odds.csv')))
 
     df.drop(df.loc[df['result'] == 'D'].index, inplace=True) # Drop ties first 
     
@@ -43,6 +43,9 @@ def load_data(as_3D=False):
     if as_3D:
         multi_df_train = train_df.set_index(['fighter_url', train_df.groupby('fighter_url').cumcount(ascending=False)])
         drop_cols = drop_cols.drop_duplicates().drop('fighter_url')
+        if include_odds:
+            drop_cols = drop_cols.drop('odds')
+
         final_df_train = multi_df_train.drop(columns=drop_cols, axis=1)
 
         multi_df_test = test_df.set_index(['fighter_url', test_df.groupby('fighter_url').cumcount(ascending=False)])

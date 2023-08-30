@@ -295,7 +295,7 @@ if __name__=='__main__':
 
     # Split datasets 
     val, test = random_split(dataset=test, 
-                            lengths=[0.9, 0.1])
+                            lengths=[0.5, 0.5])
 
     # Search space for hyperparameters and ML Flow 
     search_space = {'mlflow_experiment_id': experiment_id,
@@ -326,7 +326,7 @@ if __name__=='__main__':
             resources={'cpu': 4, 'gpu': 0.25}
         ),
         tune_config=tune.TuneConfig(
-            num_samples=50,
+            num_samples=100,
             scheduler=ASHAScheduler(
                 max_t=200,
                 grace_period=3
@@ -373,6 +373,7 @@ if __name__=='__main__':
                     collate_fn=PadSequence())
 
     test_model(best_model, test_loader, sc)
+    torch.save(best_model, 'C:/Users/enioh/Documents/Github/MMA-ML-Model/models/rnn.pt')
 
 # Tensorboard
 # writer.add_graph(model, iter(train_loader).__next__()[0][0].to(device))

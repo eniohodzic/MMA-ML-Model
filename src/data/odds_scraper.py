@@ -167,7 +167,7 @@ class BestFightOddsScraper(PoolScraper):
         # All fights for training
         df = self.combine_dfs(self.df, odds_df)
         # needs to be \\mma when running mma.py
-        df.to_csv(os.path.abspath(os.path.join(os.path.dirname(__file__),  '..', '..', 'data/', 'raw/', 'odds.csv')), index=False)
+        df.to_csv(os.path.abspath(os.path.join(os.path.dirname(__file__),  '..', '..', 'data/', 'processed/', 'odds.csv')), index=False)
         #df.to_csv(str(Path().resolve().parent) + '\\data\\odds.csv', index=False)
         df.drop(columns=['opp_odds'], inplace=True)
 
@@ -202,6 +202,9 @@ class BestFightOddsScraper(PoolScraper):
         odds_df['fighter'] = odds_df['fighter'].str.lower()
         odds_df['opponent'] = odds_df['opponent'].str.lower()
 
+        df['fighter'] = df['fighter'].str.lower()
+        df['opponent'] = df['opponent'].str.lower()
+
         # Fix wrong bfo dates which are sometimes 1 day ahead of ufcstats
         dates = odds_df['date'].apply(lambda x: self.fix_date(x, df['date']))
         odds_df = odds_df.assign(date=dates)
@@ -235,18 +238,20 @@ class BestFightOddsScraper(PoolScraper):
         """Check and fix dangling odds, where one fighter in fight has odds and other doesn't
         How do I make this not use itertuples?"""
         df_copy = df.copy()
-        for row in df_copy.itertuples():
-            if pd.isna(row.odds):
-                # frontfill
-                if row.Index % 2 == 0:
-                    if pd.notnull(df.iloc[row.Index + 1]['odds']):
-                        df.loc[row.Index, 'odds'] = df.iloc[row.Index + 1]['opp_odds']
-                        df.loc[row.Index, 'opp_odds'] = df.iloc[row.Index + 1]['odds']
-                # backfill
-                else:
-                    if pd.notnull(df.iloc[row.Index - 1]['odds']):
-                        df.loc[row.Index, 'odds'] = df.iloc[row.Index - 1]['opp_odds']
-                        df.loc[row.Index, 'opp_odds'] = df.iloc[row.Index - 1]['odds']
+        groups = df_copy.groupby('fight_url') 
+        for _, group in groups:
+            if not pd.isna(group['odds']).all() and len(group) == 2:
+                row0 = group.iloc[0]
+                row1 = group.iloc[1]
+                
+                # frontfill, group.iloc[0] is present
+                if pd.notnull(row0['odds']):
+                    df.loc[row1.name, 'odds'] = row0['opp_odds']
+                    df.loc[row1.name, 'opp_odds'] = row0['odds']
+                # backfill, group.iloc[1] is present
+                if pd.notnull(row1['odds']):
+                    df.loc[row0.name, 'odds'] = row1['opp_odds']
+                    df.loc[row0.name, 'opp_odds'] = row1['odds']
 
         return df
 
