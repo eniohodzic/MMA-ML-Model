@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from ..features.Feature_Extractor import Feature_Extractor
+from ..features.feature_extractor import Feature_Extractor
 
 
-def predict_future_fight(model, df, info, columns):
+def predict_future_fight(df, info):
     """
     For predicting fights that have not happened yet, precomp_stats need to be recalculated using all of that fighter's fights
     I.e, shift(1) -> shift(0)
@@ -48,7 +48,4 @@ def predict_future_fight(model, df, info, columns):
 
     prediction_df = final_df.iloc[0:2,:]
 
-    results = model.predict_proba(prediction_df[columns])
-
-    print(f'Result of {fighter1_name}: {results[1]}')
-    print(f'Result of {fighter2_name}: {results[0]}')
+    return prediction_df

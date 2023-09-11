@@ -7,16 +7,15 @@ import torch
 
 sys.path.insert(0, 'C:/Users/enioh/Documents/Github/MMA-ML-Model')
 from src.features.load_data import load_data
-from src.models.Pytorch_model2 import MMA_RNN, StandardScaler
+from src.models.RNN_Model import MMA_RNN, StandardScaler
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Setting up data for odds comparison
-X_train, y_train, X_test, y_test = load_data(as_3D=True, include_odds=True)
-odds = np.expand_dims(X_test[:,:,-1], axis=2)
-X_train = np.delete(X_train, -1, 2)
-X_test = np.delete(X_test, -1, 2)
+X_train, y_train, _ = load_data(split='train')
+X_test, y_test, odds_test = load_data(split='test')
 
+# Model loading
 model = torch.load('C:/Users/enioh/Documents/Github/MMA-ML-Model/models/rnn.pt')
 model.eval()
 
@@ -28,19 +27,23 @@ sc.fit(mat)
 X_test = torch.from_numpy(X_test).to(device)
 y_test = torch.from_numpy(y_test).to(device)
 
-
 fighter_len = X_test.shape[0]
 fight_len = X_test.shape[1]
 
 # Odds simulation constants
 bank = 1000
 
-for fighter in range(0,fighter_len):
+# counts
+correct = 0
+total = 0
+
+rng = np.random.default_rng(4)
+for fighter in rng.permutation(fighter_len):
     for fight in range(0, fight_len):
 
         with torch.no_grad():
             X = X_test[fighter, fight, :]
-            if X.isnan().sum() / X.shape[0] > 0.05:
+            if X.isnan().sum() / X.shape[0] > 0.9:
                 continue
             
             X = torch.unsqueeze(X, 0)
@@ -48,7 +51,7 @@ for fighter in range(0,fighter_len):
             X = torch.unsqueeze(X, 0)
 
             y = y_test[fighter, fight, 0]
-            odd = odds[fighter, fight, 0]
+            odd = odds_test[fighter, fight, 0]
 
             if torch.isnan(y):
                 continue
@@ -68,17 +71,20 @@ for fighter in range(0,fighter_len):
                     print('No bet')
                     continue
 
-                bet_amount = fraction * bank * 0.01
+                bet_amount = fraction * bank * 0.1
                 print(f'Betting {bet_amount:.2f}')
 
                 # Check win and adjust bank
                 if y == 1:
                     bank += bet_amount * ((1 - odd) / odd)
                     print(f'Bet won, Current Bank: {bank:.2f}')
+                    correct += 1
                 else:
                     bank -= bet_amount
                     print(f'Bet lost, Current Bank: {bank:.2f}')
-
+                
+                total += 1
                 time.sleep(0.1)
 
 print(f'Final Bank Value: {bank:.2f}')
+print(f'Total Acc: {correct/total:.2f}')
