@@ -43,7 +43,7 @@ for fighter in rng.permutation(fighter_len):
 
         with torch.no_grad():
             X = X_test[fighter, fight, :]
-            if X.isnan().sum() / X.shape[0] > 0.9:
+            if X.isnan().sum() / X.shape[0] > 1:
                 continue
             
             X = torch.unsqueeze(X, 0)

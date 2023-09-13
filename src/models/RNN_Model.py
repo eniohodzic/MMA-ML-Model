@@ -156,7 +156,7 @@ def train_model(config, train, val):
 
     # Loss and Optimizer
     criterion = nn.BCEWithLogitsLoss(reduction='none')
-    optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'])
+    optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'], momentum=config['momentum'])
 
     # Training Loop
     while True:
@@ -297,9 +297,10 @@ if __name__ == '__main__':
 
     # Search space for hyperparameters and ML Flow 
     search_space = {'mlflow_experiment_id': experiment_id,
-                    'lr': tune.loguniform(1e-4, 1e-2),
-                    'hidden_size': tune.qrandint(500,950,1),
-                    'batch_size': tune.choice([2,4,8]),
+                    'lr': tune.loguniform(1e-5, 1e-3),
+                    'momentum': tune.loguniform(1e-1,1),
+                    'hidden_size': tune.qrandint(200,1000,5),
+                    'batch_size': tune.choice([2,4,8,16]),
                     'num_layers': tune.choice([1,2]),
                     'dropout': tune.uniform(0,0.5)
                     }
@@ -321,7 +322,7 @@ if __name__ == '__main__':
             num_samples=100,
             scheduler=ASHAScheduler(
                 max_t=200,
-                grace_period=3
+                grace_period=5
             ),
             metric='loss',
             mode='min',

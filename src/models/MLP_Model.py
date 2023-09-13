@@ -65,7 +65,7 @@ class MMADataset3D(Dataset):
         super(MMADataset3D, self).__init__()
         
         # Dataloading
-        self.X, self.y = load_data(split=split)
+        self.X, self.y, _ = load_data(split=split)
         
         # Converting to 2D 
         self.X = np.reshape(self.X, (-1, self.X.shape[2]))
@@ -113,12 +113,15 @@ class MinMaxScaler:
 
 # Network architecture
 class MMANet(nn.Module):
-    def __init__(self, input_size, hidden1_size, hidden2_size, hidden3_size, alpha, dropout, output_size):
+    def __init__(self, input_size, hidden1_size, 
+                 hidden2_size, 
+                #  hidden3_size, 
+                 alpha, dropout, output_size):
         super(MMANet, self).__init__()
         self.l1 = nn.Linear(input_size, hidden1_size)
         self.l2 = nn.Linear(hidden1_size, hidden2_size)
-        self.l3 = nn.Linear(hidden2_size, hidden3_size)
-        self.l4 = nn.Linear(hidden3_size, output_size)
+        # self.l3 = nn.Linear(hidden2_size, hidden3_size)
+        self.l4 = nn.Linear(hidden2_size, output_size)
         self.lrelu = nn.LeakyReLU(alpha)
         self.drop1 = nn.Dropout(p=dropout)
         
@@ -127,8 +130,8 @@ class MMANet(nn.Module):
         out = self.lrelu(out)
         out = self.l2(out)
         out = self.lrelu(out)
-        out = self.l3(out)
-        out = self.lrelu(out)
+        # out = self.l3(out)
+        # out = self.lrelu(out)
         out = self.drop1(out)
         out = self.l4(out)
         return out
@@ -139,7 +142,7 @@ def train_model(config, train, val):
     model = MMANet(input_size=input_size,
                    hidden1_size=config['hidden1_size'],
                    hidden2_size=config['hidden2_size'],
-                   hidden3_size=config['hidden3_size'],
+                #    hidden3_size=config['hidden3_size'],
                    alpha=config['alpha'],
                    dropout=config['dropout'],
                    output_size=output_size).to(device)
@@ -161,7 +164,7 @@ def train_model(config, train, val):
 
     # Loss and Optimizer
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'])
+    optimizer = torch.optim.SGD(model.parameters(), lr=config['lr'], momentum=config['momentum'])
 
      # Training Loop
     while True:
@@ -267,11 +270,12 @@ if __name__ == '__main__':
                         transform=ToTensor())
 
     search_space = {'mlflow_experiment_id': experiment_id,
-                    'lr': tune.loguniform(1e-4, 1e-3),
+                    'lr': tune.loguniform(1e-5, 1e-3),
+                    'momentum': tune.loguniform(1e-3, 1),
                     'batch_size': tune.choice([2,4,8,16,32]),
-                    'hidden1_size': tune.qrandint(300,700,5),
-                    'hidden2_size': tune.qrandint(100,300,2),
-                    'hidden3_size': tune.qrandint(10,100,1),
+                    'hidden1_size': tune.qrandint(300,2000,5),
+                    'hidden2_size': tune.qrandint(100,2000,5),
+                    # 'hidden3_size': tune.qrandint(10,100,1),
                     'alpha': tune.uniform(0,0.5),
                     'dropout': tune.uniform(0,0.5)
                     }
@@ -320,7 +324,7 @@ if __name__ == '__main__':
     best_model = MMANet(input_size=input_size,
                         hidden1_size=best_config['hidden1_size'],
                         hidden2_size=best_config['hidden2_size'],
-                        hidden3_size=best_config['hidden3_size'],
+                        # hidden3_size=best_config['hidden3_size'],
                         alpha=best_config['alpha'],
                         dropout=best_config['dropout'],
                         output_size=output_size).to(device)

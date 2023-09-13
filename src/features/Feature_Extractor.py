@@ -1,4 +1,5 @@
 import re
+import warnings
 from copy import deepcopy
 from datetime import datetime
 from os.path import abspath, dirname, join
@@ -25,8 +26,9 @@ class Feature_Extractor():
 
 
     def __init__(self, predict_df=None) -> None:
+        warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
         self.transformed_data = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'transformed_stats.csv')))
-
+        # self.transformed_data = self.transformed_data.head(200)
         if predict_df is None:
             self.extracted_data = deepcopy(self.transformed_data)
         else:
@@ -71,6 +73,9 @@ class Feature_Extractor():
             m, s = time.split(':')
 
             self.extracted_data.loc[idx, 'total_time'] = (int(round) - 1) * 5 + int(m) + int(s) / 60
+
+        # Convert date to useable format
+        self.extracted_data['date'] = self.extracted_data['date'].astype('datetime64[ns]')
 
     def feature_absorbed_defended(self):
         """
@@ -283,28 +288,31 @@ class Feature_Extractor():
         for col in tqdm(cols):
 
             # Prior stat from last fight, first fight is set as NaN by default
-            self.extracted_data['precomp_' + col + '_prior'] = group[col].shift(shift)
+            self.extracted_data.loc[:, 'precomp_' + col + '_prior'] = group[col].shift(shift)
 
             # Mean stat from prior fights, t0 fight includes t-1,t-2,...., t-1 fight includes t-2, t-3
-            self.extracted_data['precomp_' + col + '_avg'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=2).mean())
+            self.extracted_data.loc[:, 'precomp_' + col + '_avg'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=1).mean())
 
             # Windowed mean from prior 3 fights, will make this adjustable in the future
-            self.extracted_data['precomp_' + col + '_windowavg'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=2).mean())
+            self.extracted_data.loc[:, 'precomp_' + col + '_windowavg'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=1).mean())
+
+            # Exponential Weighting Average, halflife of 6 months (observation decays to half value for mean calculation at 6 months)
+            self.extracted_data.loc[:, 'precomp_' + col + '_ewmavg'] = group[[col,'date']].apply(lambda x : x[col].shift(shift).ewm(halflife='182 days', times=x['date']).mean().to_frame())[col]
 
             # Variance stat
-            self.extracted_data['precomp_' + col + '_var'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=2).var())
+            self.extracted_data.loc[:, 'precomp_' + col + '_var'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=1).var())
 
             # Windowed variance 
-            self.extracted_data['precomp_' + col + '_windowvar'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=2).var())
+            self.extracted_data.loc[:, 'precomp_' + col + '_windowvar'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=1).var())
 
             # Peak stat across prior fights
-            self.extracted_data['precomp_' + col + '_peak'] = group[col].apply(lambda x : x.shift(shift).expanding().max())
+            self.extracted_data.loc[:, 'precomp_' + col + '_peak'] = group[col].apply(lambda x : x.shift(shift).expanding().max())
 
             # Min stat across prior fights 
-            self.extracted_data['precomp_' + col + '_low'] = group[col].apply(lambda x : x.shift(shift).expanding().min())
+            self.extracted_data.loc[:, 'precomp_' + col + '_low'] = group[col].apply(lambda x : x.shift(shift).expanding().min())
 
             # Delta between last fight and fight before that 
-            self.extracted_data['precomp_' + col + '_delta'] = group[col].apply(lambda x : x.shift(shift).diff())
+            self.extracted_data.loc[:, 'precomp_' + col + '_delta'] = group[col].apply(lambda x : x.shift(shift).diff())
 
     def feature_diff_opponent(self):
         """
@@ -325,4 +333,4 @@ class Feature_Extractor():
             # Combine them based on NaN values 
             stat_vs_opp = first_stat.fillna(second_stat)
 
-            self.extracted_data[col + '_vs_opp'] = stat_vs_opp
+            self.extracted_data.loc[:, col + '_vs_opp'] = stat_vs_opp

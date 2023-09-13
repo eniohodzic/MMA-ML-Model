@@ -18,7 +18,7 @@ def load_data(split='train', return_drop_cols=False):
 
     # Checking if pre-split data is present and loading without computations
     path = abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'final/', 'final_3D_' + split + '_.npz'))
-    if exists(path):
+    if exists(path) and not return_drop_cols:
         npz = np.load(path)
         return npz['X'], npz['y'], npz['odds']
 
@@ -40,10 +40,10 @@ def load_data(split='train', return_drop_cols=False):
     post_comp_cols = df.loc[:, ~df.columns.str.contains('precomp_([a-zA-Z_]+)_vs_opp', regex=True)].columns.to_list() 
     drop_cols = drop_cols.insert(0, post_comp_cols)
 
-    # Dropping correlated features 
-    features = df.drop(columns=drop_cols, axis=1)
-    drop_features_cols = get_corr_features(features, thresh=0.95)
-    drop_cols = drop_cols.insert(0, drop_features_cols)
+    # # Dropping correlated features 
+    # features = df.drop(columns=drop_cols, axis=1)
+    # drop_features_cols = get_corr_features(features, thresh=0.95)
+    # drop_cols = drop_cols.insert(0, drop_features_cols)
 
     if return_drop_cols:
         return drop_cols
