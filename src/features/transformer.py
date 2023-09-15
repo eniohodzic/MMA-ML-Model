@@ -47,8 +47,8 @@ class Transformer():
     """
 
     def __init__(self) -> None:
-        self.fight_stats = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'raw/', 'fight_stats.csv')))
-        self.fighter_stats = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'raw/', 'fighter_stats.csv')))
+        self.fight_stats = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'raw/', 'RAW_fight_stats.csv')))
+        self.fighter_stats = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'raw/', 'RAW_fighter_stats.csv')))
         self.fighter_stats.rename(columns={'name': 'fighter'}, inplace=True)
         self.transformed_data = pd.DataFrame()
 
@@ -57,12 +57,12 @@ class Transformer():
         self.__transfer_columns()
         self.__convert_dtypes()
 
-        self.transformed_data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'transformed_stats.csv')), index=False)
+        self.transformed_data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'INTERIM1_transform.csv')), index=False)
     
     def __merge_tables(self) -> None:
         """Merge both tables along fighter name"""
         self.data = self.fight_stats.merge(self.fighter_stats, on='fighter')
-        self.data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'merged_stats.csv')), index=False)
+        self.data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'raw/', 'RAW_merged_stats.csv')), index=False)
 
     def __transfer_columns(self) -> None:
         """Transfer columns of merged table to post-processed dataframe"""

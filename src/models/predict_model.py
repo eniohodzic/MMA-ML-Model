@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ..features.feature_extractor import Feature_Extractor
+from ..features.feature_extractor import FeatureExtractor
 
 
 def predict_future_fight(df, info):
@@ -41,7 +41,7 @@ def predict_future_fight(df, info):
     df_subset = pd.concat([pd.DataFrame(rows), df_subset], ignore_index=True)
     df_subset = df_subset[col_order]
 
-    Extractor = Feature_Extractor(predict_df=df_subset)
+    Extractor = FeatureExtractor(predict_df=df_subset)
     Extractor.extract(shift=1)
 
     final_df = Extractor.extracted_data

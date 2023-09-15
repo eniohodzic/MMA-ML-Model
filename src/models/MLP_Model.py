@@ -35,31 +35,6 @@ writer = SummaryWriter('C:/Users/enioh/Documents/Github/MMA-ML-Model/runs/' + da
 # Device setting to use GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-"""# # Custom Dataset loading class
-# class MMADataset(Dataset):
-#     def __init__(self, transform=None, target_transform=None):
-#         super(MMADataset, self).__init__()
-        
-#         # Dataloading
-#         self.X, self.y = load_data(as_3D=True)
-#         self.X = np.nan_to_num(self.X)
-#         self.X, self.y = torch.from_numpy(self.X), torch.from_numpy(self.y)
-        
-#         self.transform = transform
-#         self.target_transform = target_transform
-
-#     def __len__(self):
-#         return len(self.y)
-    
-#     def __getitem__(self, index):
-#         X = self.X[index,:]
-#         y = self.y[index]
-#         if self.transform:
-#             X = self.transform(X)
-#         if self.target_transform:
-#             y = self.target_transform(y)
-#         return X, y"""
-
 class MMADataset3D(Dataset):
     def __init__(self, transform=None, target_transform=None, split='train'):
         super(MMADataset3D, self).__init__()
@@ -113,27 +88,23 @@ class MinMaxScaler:
 
 # Network architecture
 class MMANet(nn.Module):
-    def __init__(self, input_size, hidden1_size, 
-                 hidden2_size, 
-                #  hidden3_size, 
-                 alpha, dropout, output_size):
+    def __init__(self, 
+                 input_size, 
+                 hidden1_size,
+                 dropout, 
+                 output_size):
+        
         super(MMANet, self).__init__()
         self.l1 = nn.Linear(input_size, hidden1_size)
-        self.l2 = nn.Linear(hidden1_size, hidden2_size)
-        # self.l3 = nn.Linear(hidden2_size, hidden3_size)
-        self.l4 = nn.Linear(hidden2_size, output_size)
-        self.lrelu = nn.LeakyReLU(alpha)
+        self.l2 = nn.Linear(hidden1_size, output_size)
+        self.silu = nn.SiLU()
         self.drop1 = nn.Dropout(p=dropout)
         
     def forward(self, x):
         out = self.l1(x)
-        out = self.lrelu(out)
-        out = self.l2(out)
-        out = self.lrelu(out)
-        # out = self.l3(out)
-        # out = self.lrelu(out)
+        out = self.silu(out)
         out = self.drop1(out)
-        out = self.l4(out)
+        out = self.l2(out)
         return out
 
 def train_model(config, train, val):
@@ -141,9 +112,6 @@ def train_model(config, train, val):
     # Model init
     model = MMANet(input_size=input_size,
                    hidden1_size=config['hidden1_size'],
-                   hidden2_size=config['hidden2_size'],
-                #    hidden3_size=config['hidden3_size'],
-                   alpha=config['alpha'],
                    dropout=config['dropout'],
                    output_size=output_size).to(device)
     
@@ -268,21 +236,18 @@ if __name__ == '__main__':
     
     test = MMADataset3D(split='test',
                         transform=ToTensor())
-
-    search_space = {'mlflow_experiment_id': experiment_id,
-                    'lr': tune.loguniform(1e-5, 1e-3),
-                    'momentum': tune.loguniform(1e-3, 1),
-                    'batch_size': tune.choice([2,4,8,16,32]),
-                    'hidden1_size': tune.qrandint(300,2000,5),
-                    'hidden2_size': tune.qrandint(100,2000,5),
-                    # 'hidden3_size': tune.qrandint(10,100,1),
-                    'alpha': tune.uniform(0,0.5),
-                    'dropout': tune.uniform(0,0.5)
-                    }
     
     # Constants for model use
     input_size = train[0][0].shape[0]
     output_size = 1
+
+    search_space = {'mlflow_experiment_id': experiment_id,
+                    'lr': tune.loguniform(1e-5, 1e-3),
+                    'momentum': tune.loguniform(0.1,1),
+                    'batch_size': tune.choice([2,4,8,16,32]),
+                    'hidden1_size': tune.qrandint(100,input_size,10),
+                    'dropout': tune.uniform(0,0.75)
+                    }
 
     # Hyperparameter search 
     algo = OptunaSearch()
@@ -294,7 +259,7 @@ if __name__ == '__main__':
             resources={'cpu': 4, 'gpu': 0.25}
         ),
         tune_config=tune.TuneConfig(
-            num_samples=150,
+            num_samples=50,
             scheduler=ASHAScheduler(
                 max_t=200,
                 grace_period=3
@@ -323,9 +288,6 @@ if __name__ == '__main__':
     config = best_model.config
     best_model = MMANet(input_size=input_size,
                         hidden1_size=best_config['hidden1_size'],
-                        hidden2_size=best_config['hidden2_size'],
-                        # hidden3_size=best_config['hidden3_size'],
-                        alpha=best_config['alpha'],
                         dropout=best_config['dropout'],
                         output_size=output_size).to(device)
     best_model.load_state_dict(checkpoint_data['wts'])

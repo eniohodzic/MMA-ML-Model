@@ -22,48 +22,53 @@ def load_data(split='train', return_drop_cols=False):
         npz = np.load(path)
         return npz['X'], npz['y'], npz['odds']
 
-    # Reading Processed Dataset
-    df = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'odds.csv')))
-    df.drop(df.loc[df['result'] == 'D'].index, inplace=True) # Drop ties
-    
-    # Splitting dataframes into 
-    df['date'] = pd.to_datetime(df['date'])
-    df = df.loc[df['date'] > '2012-01-01'] 
-    val_df = df.loc[df['date'] > '2021-01-01'] 
-    test_df = df.loc[df['date'] > '2022-06-01'] 
-    train_df = df.drop(val_df.index)
+    # Reading Processed Dataset and organize into multiindex 
+    df = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'PROCESSED_stats_plus_odds.csv')))
+    multi_df = df.set_index(['fighter_url', df.groupby('fighter_url').cumcount(ascending=False)])
+    multi_df.index.names = ['fighter_url', 'fight_num']
+
+    # Select rows where fighters have at least X fights (2)
+    num = 1
+    multi_df = multi_df.query(f'fight_num >= {num}')
+    multi_df.drop(multi_df.loc[multi_df['result'] == 'D'].index, inplace=True) # Drop ties
+
+    # Splitting dataframes into test, val, train based on fight date 
+    multi_df['date'] = pd.to_datetime(multi_df['date'])
+    multi_df = multi_df.loc[multi_df['date'] > '2012-01-01'] 
+    val_df = multi_df.loc[multi_df['date'] > '2021-01-01'] 
+    test_df = multi_df.loc[multi_df['date'] > '2022-06-01'] 
+    train_df = multi_df.drop(val_df.index)
     val_df = val_df.drop(test_df.index)  
 
     # Dropping non-precomp features and only keeping vs_opp for keeping symmetry in prediction 
-    drop_cols = df.loc[:, :'referee'].columns 
-    drop_cols = drop_cols.insert(0, df.columns[df.isna().mean() > 0.9].to_list()) # drop columns that contain more than % nans
-    post_comp_cols = df.loc[:, ~df.columns.str.contains('precomp_([a-zA-Z_]+)_vs_opp', regex=True)].columns.to_list() 
+    drop_cols = multi_df.loc[:, :'referee'].columns 
+    drop_cols = drop_cols.insert(0, multi_df.columns[multi_df.isna().mean() > 0.5].to_list()) # drop columns that contain more than % nans
+    post_comp_cols = multi_df.loc[:, ~multi_df.columns.str.contains('precomp_(?:[a-zA-Z_]+)_vs_opp', regex=True)].columns.to_list() 
     drop_cols = drop_cols.insert(0, post_comp_cols)
 
-    # # Dropping correlated features 
-    # features = df.drop(columns=drop_cols, axis=1)
-    # drop_features_cols = get_corr_features(features, thresh=0.95)
-    # drop_cols = drop_cols.insert(0, drop_features_cols)
+    # Dropping correlated features 
+    features = multi_df.drop(columns=drop_cols, axis=1)
+    drop_features_cols = get_corr_features(features, thresh=0.95)
+    drop_cols = drop_cols.insert(0, drop_features_cols)
 
     if return_drop_cols:
         return drop_cols
     
     # Selecting dataframe for processing based on subset
     if split == 'train':
-        df = train_df
+        multi_df = train_df
     elif split == 'val':
-        df = val_df
+        multi_df = val_df
     elif split == 'test':
-        df = test_df
+        multi_df = test_df
     elif split == 'full':
         pass
     else:
         raise ValueError('split was not properly defined')
 
     # Dropping columns
-    multi_df = df.set_index(['fighter_url', df.groupby('fighter_url').cumcount(ascending=False)])
-    drop_cols = drop_cols.drop_duplicates().drop('fighter_url')
-    odds_df = multi_df['odds']
+    drop_cols = drop_cols.drop_duplicates()
+    odds_df = multi_df[['odds']]
     final_df = multi_df.drop(columns=drop_cols, axis=1)
 
     # Removing fighters with many missing values
@@ -73,9 +78,10 @@ def load_data(split='train', return_drop_cols=False):
     y = multi_df.loc[(mask[mask].index, slice(None)), ['result']]
     odds = odds_df.loc[(mask[mask].index, slice(None))]
 
+    # Converting to float tensor and saving 
     X = X.to_xarray().to_array().to_numpy() # Feats x Fighter x Fights 
     y = y.to_xarray().to_array().to_numpy() # 1 x Fighter x Fights
-    odds = np.expand_dims(odds.to_xarray().to_numpy(), 0) # 1 x Fighter x Fights
+    odds = odds.to_xarray().to_array().to_numpy() # 1 x Fighter x Fights
 
     X = np.transpose(X, (1, 2, 0)) # Fighter x Fights x Feats
     y = np.transpose(y, (1, 2, 0)) # Fighters x Fights x 1

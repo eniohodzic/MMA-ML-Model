@@ -11,9 +11,9 @@ from tqdm import tqdm
 from .elo_system import EloSystem
 
 
-class Feature_Extractor():
+class FeatureExtractor():
     """
-    Feature_Extractor serves to create new columns through various operations
+    FeatureExtractor serves to create new columns through various operations
 
     This differes from Transformer in that these formualate additional features based on the transformers output 
 
@@ -27,7 +27,7 @@ class Feature_Extractor():
 
     def __init__(self, predict_df=None) -> None:
         warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-        self.transformed_data = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'transformed_stats.csv')))
+        self.transformed_data = pd.read_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'INTERIM1_transform.csv')))
         # self.transformed_data = self.transformed_data.head(200)
         if predict_df is None:
             self.extracted_data = deepcopy(self.transformed_data)
@@ -45,7 +45,7 @@ class Feature_Extractor():
         self.feature_diff_opponent()
         
     def write(self):
-        self.extracted_data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'processed/', 'extracted_stats.csv')), index=False)
+        self.extracted_data.to_csv(abspath(join(dirname(dirname(dirname(__file__))), 'data/', 'interim/', 'INTERIM2_transform.csv')), index=False)
 
     def feature_conversion(self):
         # Coverting some of these various columns into useable features

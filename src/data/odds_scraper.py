@@ -33,14 +33,14 @@ class PoolScraper:
     # Function to fetch data from server
     def fetch(self, session, base_url):
         WEB_HDRS = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
                         'Accept-Charset': 'Windows-1252,utf-8;q=0.7,*;q=0.3',
                         'Accept-Encoding': 'gzip, deflate, br',
                         'Accept-Language': 'en-US,en;q=0.9',
-                        'Connection': 'keep-alive'
+                        'Cookie': '__cf_bm=U9cD6EFjL.mHDp4zgZmi7RFPL98GhRqo3wjWyy3XzKs-1694654147-0-AS+9g9kzy2OgdSUI0lCwDHH0ysCPaKqVYRKhv6tTtAcZYZiou2WDwFkslTp0rB4Ir4M+HZYQOOchoUEJnm3nIhA='
                     }
-        with session.get(base_url) as response:
+        with session.get(base_url, headers=WEB_HDRS) as response:
             #data = response.text
             if response.status_code != 200 or response.text.startswith('Error '):
                 print("FAILURE::{0}".format(base_url))
@@ -138,10 +138,10 @@ class WikiTableScraper:
         return data
 
 class BestFightOddsScraper(PoolScraper):
-    def __init__(self, df, workers=4):
+    def __init__(self, workers=4):
         super().__init__(workers=workers)
         self.urls = []
-        self.df = df
+        self.df = pd.read_csv(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data/', 'interim/', 'INTERIM2_transform.csv')))
 
     def run(self, upcoming=False):
         fighters = set(self.df['fighter'].values.tolist())
@@ -167,7 +167,7 @@ class BestFightOddsScraper(PoolScraper):
         # All fights for training
         df = self.combine_dfs(self.df, odds_df)
         # needs to be \\mma when running mma.py
-        df.to_csv(os.path.abspath(os.path.join(os.path.dirname(__file__),  '..', '..', 'data/', 'processed/', 'odds.csv')), index=False)
+        df.to_csv(os.path.abspath(os.path.join(os.path.dirname(__file__),  '..', '..', 'data/', 'processed/', 'PROCESSED_stats_plus_odds.csv')), index=False)
         #df.to_csv(str(Path().resolve().parent) + '\\data\\odds.csv', index=False)
         df.drop(columns=['opp_odds'], inplace=True)
 

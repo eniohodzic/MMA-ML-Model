@@ -16,8 +16,8 @@ class UFCScraper():
         # Initialization Parameters
 
         self.data = os.path.abspath(os.path.join(os.path.dirname(__file__),  '..', '..', 'data/', 'raw/'))
-        self.fight_path = "/fight_stats.csv"
-        self.fighter_path = "/fighter_stats.csv"
+        self.fight_path = "/RAW_fight_stats.csv"
+        self.fighter_path = "/RAW_fighter_stats.csv"
         self.http = self.create_retries()
 
     def create_retries(self):
