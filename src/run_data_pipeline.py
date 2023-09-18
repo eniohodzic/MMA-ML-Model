@@ -5,18 +5,18 @@ from features.transformer import Transformer
 
 
 def run_data_pipeline():
-    # Pull stats from ufcstats to raw data
-    data_scraper = UFCScraper()
-    data_scraper.scrape_fights()
+    # # Pull stats from ufcstats to raw data
+    # data_scraper = UFCScraper()
+    # data_scraper.scrape_fights()
 
-    # Do first transformation
-    transform = Transformer()
-    transform.write_transform()
+    # # Do first transformation
+    # transform = Transformer()
+    # transform.write_transform()
 
-    # Do feature extraction 
-    feat = FeatureExtractor()
-    feat.extract()
-    feat.write()
+    # # Do feature extraction 
+    # feat = FeatureExtractor()
+    # feat.extract()
+    # feat.write()
 
     # Do odds scraping and merging 
     odds_scraper = BestFightOddsScraper()

@@ -12,8 +12,12 @@ import nest_asyncio
 import pandas as pd
 import requests
 import unidecode
+import urllib3
 from bs4 import BeautifulSoup
 from lxml import etree
+from requests_toolbelt.adapters import host_header_ssl
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 nest_asyncio.apply()
 # Initializes logging file
@@ -35,12 +39,12 @@ class PoolScraper:
         WEB_HDRS = {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                        'Accept-Charset': 'Windows-1252,utf-8;q=0.7,*;q=0.3',
                         'Accept-Encoding': 'gzip, deflate, br',
                         'Accept-Language': 'en-US,en;q=0.9',
-                        'Cookie': '__cf_bm=U9cD6EFjL.mHDp4zgZmi7RFPL98GhRqo3wjWyy3XzKs-1694654147-0-AS+9g9kzy2OgdSUI0lCwDHH0ysCPaKqVYRKhv6tTtAcZYZiou2WDwFkslTp0rB4Ir4M+HZYQOOchoUEJnm3nIhA='
+                        'Cookie': '__cf_bm=I07qgMGCZ4OnKs9ZZm8gFU5BsDWCIutWz_xP35Fme2o-1695022327-0-AUAEozTTrqga10Sb8hhgez09wd3dcoYaT8YXIiZXhzhxYXVq2Ysw+TADepEA7Ka83x/aIe2HGUeRGkpg0M/6j2s='
                     }
-        with session.get(base_url, headers=WEB_HDRS) as response:
+        session.mount('https://', host_header_ssl.HostHeaderSSLAdapter())        
+        with session.get(base_url, headers=WEB_HDRS, verify=False) as response:
             #data = response.text
             if response.status_code != 200 or response.text.startswith('Error '):
                 print("FAILURE::{0}".format(base_url))
@@ -153,7 +157,8 @@ class BestFightOddsScraper(PoolScraper):
         # Michelle Waterson-Gomez in ufcstats is Michaelle Waterson in bfo
 
 
-        self.urls = [f'https://www.bestfightodds.com/search?query={f}' for f in fighters]
+        #self.urls = [f'https://www.bestfightodds.com/search?query={f}' for f in fighters] # Fuck Cloudflare
+        self.urls = [f'https://3.132.91.22/search?query={f}' for f in fighters] # Using their ip now 
         search_responses = self.scrape(self.urls)
         fighter_page_urls = self.get_fighter_page_urls(search_responses)
         fighter_odds_responses = self.scrape(fighter_page_urls)

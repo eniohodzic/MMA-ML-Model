@@ -142,7 +142,7 @@ class FeatureExtractor():
 
                 # Accuracy is landed / attempts 
                 if attempts == 0 or pd.isnull(attempts):
-                    value = np.nan
+                    value = 0
                 else:
                     value = np.divide(landed, attempts)
 
@@ -226,7 +226,9 @@ class FeatureExtractor():
         """
         Calculating differential between two fighters of certain stat
 
-        Calculation: fighter1_stat / fighter2_stat
+        Calculation: fighter1_stat / (fighter_1 + fighter2_stat)
+
+        If fighter2_stat is zero, 
         """
 
         # Doing all stats calculated so far after 'height'
@@ -245,10 +247,11 @@ class FeatureExtractor():
                 stat_fighter1 = row[col]
                 stat_fighter2 = self.extracted_data.loc[index.values[0], col]
 
-                if stat_fighter2 == 0:
-                    value = np.nan
+                divisor = stat_fighter1 + stat_fighter2
+                if divisor == 0:
+                    value = 0
                 else:
-                    value = np.divide(stat_fighter1, stat_fighter2)
+                    value = np.divide(stat_fighter1, divisor)
 
                 self.extracted_data.loc[idx, col + '_differential'] = value
 
@@ -296,8 +299,8 @@ class FeatureExtractor():
             # Windowed mean from prior 3 fights, will make this adjustable in the future
             self.extracted_data.loc[:, 'precomp_' + col + '_windowavg'] = group[col].apply(lambda x : x.shift(shift).rolling(window=3, min_periods=1).mean())
 
-            # Exponential Weighting Average, halflife of 6 months (observation decays to half value for mean calculation at 6 months)
-            self.extracted_data.loc[:, 'precomp_' + col + '_ewmavg'] = group[[col,'date']].apply(lambda x : x[col].shift(shift).ewm(halflife='182 days', times=x['date']).mean().to_frame())[col]
+            # Exponential Weighting Average, halflife of 12 months (observation decays to half value for mean calculation at 12 months)
+            self.extracted_data.loc[:, 'precomp_' + col + '_ewmavg'] = group[[col,'date']].apply(lambda x : x[col].shift(shift).ewm(halflife='365 days', times=x['date']).mean().to_frame())[col]
 
             # Variance stat
             self.extracted_data.loc[:, 'precomp_' + col + '_var'] = group[col].apply(lambda x : x.shift(shift).expanding(min_periods=1).var())
