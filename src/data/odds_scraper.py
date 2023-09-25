@@ -313,7 +313,8 @@ class BestFightOddsScraper(PoolScraper):
 
         for path in paths:
             if path_fighter in path.lower():
-                url = 'https://www.bestfightodds.com' + path
+                #url = 'https://www.bestfightodds.com' + path
+                url = 'https://3.132.91.22' + path
                 return url
 
         #logging.info(f'No fighter found for {orig_fighter}')

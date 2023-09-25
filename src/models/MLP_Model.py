@@ -86,6 +86,14 @@ class MinMaxScaler:
         self.max = X.max(0, keepdim=True)[0]
         self.min = X.min(0, keepdim=True)[0]
 
+class BCEDecorrelatonLoss():
+    def __init__(self, c) -> None:
+        super(BCEDecorrelatonLoss, self).__init__()
+        self.cross_entropy = nn.BCELoss(reduction='none')
+        self.decorrelation = nn.BCELoss(reduction='none')
+        pass
+
+    
 # Network architecture
 class MMANet(nn.Module):
     def __init__(self, 
@@ -245,7 +253,7 @@ if __name__ == '__main__':
                     'lr': tune.loguniform(1e-5, 1e-3),
                     'momentum': tune.loguniform(0.1,1),
                     'batch_size': tune.choice([2,4,8,16,32]),
-                    'hidden1_size': tune.qrandint(100,input_size,10),
+                    'hidden1_size': tune.qrandint(50,input_size,2),
                     'dropout': tune.uniform(0,0.75)
                     }
 
@@ -259,7 +267,7 @@ if __name__ == '__main__':
             resources={'cpu': 4, 'gpu': 0.25}
         ),
         tune_config=tune.TuneConfig(
-            num_samples=50,
+            num_samples=100,
             scheduler=ASHAScheduler(
                 max_t=200,
                 grace_period=3

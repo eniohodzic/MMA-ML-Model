@@ -27,8 +27,11 @@ def load_data(split='train', return_drop_cols=False):
     multi_df = df.set_index(['fighter_url', df.groupby('fighter_url').cumcount(ascending=False)])
     multi_df.index.names = ['fighter_url', 'fight_num']
 
+    # Remove all Women fights from dataframe
+    multi_df = multi_df[~multi_df['division'].str.contains('Women')]
+
     # Select rows where fighters have at least X fights (2)
-    num = 1
+    num = 3
     multi_df = multi_df.query(f'fight_num >= {num}')
     multi_df.drop(multi_df.loc[multi_df['result'] == 'D'].index, inplace=True) # Drop ties
 
@@ -47,9 +50,9 @@ def load_data(split='train', return_drop_cols=False):
     drop_cols = drop_cols.insert(0, post_comp_cols)
 
     # Dropping correlated features 
-    features = multi_df.drop(columns=drop_cols, axis=1)
-    drop_features_cols = get_corr_features(features, thresh=0.95)
-    drop_cols = drop_cols.insert(0, drop_features_cols)
+    # features = multi_df.drop(columns=drop_cols, axis=1)
+    # drop_features_cols = get_corr_features(features, thresh=0.6)
+    # drop_cols = drop_cols.insert(0, drop_features_cols)
 
     if return_drop_cols:
         return drop_cols
